@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collapsible Sidebar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            overflow-x: hidden;
+        }
+
+        /* Sidebar */
+        .custom-sidebar {
+            width: 250px;
+            height: 100vh;
+            background: #343a40;
+            color: #fff;
+            position: fixed;
+            top: 0;
+            left: 0;
+            transition: width 0.3s ease;
+            z-index: 1030;
+        }
+
+        .custom-sidebar.collapsed {
+            width: 70px;
+        }
+
+        .custom-sidebar .nav-link {
+            color: #fff;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .custom-sidebar .nav-link:hover {
+            background: #495057;
+            color: #fff;
+        }
+
+        .custom-sidebar .icon {
+            font-size: 1.2rem;
+        }
+
+        .custom-sidebar.collapsed .text {
+            display: none;
+        }
+
+        /* Toggle Button */
+        .custom-sidebar-toggler {
+            position: absolute;
+            top: 10px;
+            right: -40px;
+            background: #343a40;
+            color: #fff;
+            border: none;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .custom-sidebar-toggler:hover {
+            background: #495057;
+        }
+
+        /* Content */
+        .custom-content {
+            margin-left: 250px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .custom-content.collapsed {
+            margin-left: 70px;
+        }
+
+        @media (max-width: 992px) {
+            .custom-sidebar {
+                left: -250px;
+            }
+
+            .custom-sidebar.open {
+                left: 0;
+            }
+
+            .custom-content {
+                margin-left: 0 !important;
+            }
+
+            .custom-sidebar-toggler {
+                position: relative;
+                top: 0;
+                right: 0;
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="custom-sidebar" id="custom-sidebar">
+        <button class="custom-sidebar-toggler" id="custom-sidebar-toggler">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <nav class="nav flex-column">
+            <a href="#" class="nav-link active">
+                <i class="fas fa-home icon"></i>
+                <span class="text">Dashboard</span>
+            </a>
+            <a href="#" class="nav-link">
+                <i class="fas fa-file-alt icon"></i>
+                <span class="text">Reports</span>
+            </a>
+            <a href="#" class="nav-link">
+                <i class="fas fa-cogs icon"></i>
+                <span class="text">Settings</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="custom-content" id="custom-content">
+        <div class="container-fluid">
+            <!-- Sidebar Toggle Button (Visible on Mobile) -->
+            <button class="btn btn-dark d-lg-none mb-3" id="mobile-sidebar-toggler">
+                <i class="fas fa-bars"></i> Toggle Sidebar
+            </button>
+
+            <h1>Responsive Collapsible Sidebar</h1>
+            <p>Resize the browser to see the responsive behavior of the sidebar.</p>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Custom JavaScript -->
+    <script>
+        $(document).ready(function () {
+            const $sidebar = $('#custom-sidebar');
+            const $content = $('#custom-content');
+            const $sidebarToggler = $('#custom-sidebar-toggler');
+            const $mobileSidebarToggler = $('#mobile-sidebar-toggler');
+
+            // Desktop: Toggle Sidebar Collapse
+            $sidebarToggler.on('click', function () {
+                $sidebar.toggleClass('collapsed');
+                $content.toggleClass('collapsed');
+
+                // Update Toggler Icon
+                if ($sidebar.hasClass('collapsed')) {
+                    $sidebarToggler.find('i').removeClass('fa-chevron-left').addClass('fa-chevron-right');
+                } else {
+                    $sidebarToggler.find('i').removeClass('fa-chevron-right').addClass('fa-chevron-left');
+                }
+            });
+
+            // Mobile: Toggle Sidebar Open/Close
+            $mobileSidebarToggler.on('click', function () {
+                $sidebar.toggleClass('open');
+            });
+
+            // Close Sidebar on Mobile When Clicking Outside
+            $(document).on('click', function (e) {
+                if (
+                    $(window).width() <= 992 &&
+                    !$sidebar.is(e.target) &&
+                    $sidebar.has(e.target).length === 0 &&
+                    !$mobileSidebarToggler.is(e.target)
+                ) {
+                    $sidebar.removeClass('open');
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>

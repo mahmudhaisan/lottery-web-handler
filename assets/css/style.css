@@ -1,0 +1,146 @@
+body {
+    overflow-x: hidden;
+}
+
+/* Sidebar */
+.custom-sidebar {
+    width: 250px;
+    height: 100vh;
+    background: #343a40;
+    color: #fff;
+    position: fixed;
+    top: 0;
+    left: 0;
+    transition: width 0.3s ease;
+    z-index: 1030;
+}
+
+.custom-sidebar.collapsed {
+    width: 70px;
+}
+
+.custom-sidebar .nav-link {
+    color: #fff;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+}
+
+.custom-sidebar .nav-link:hover {
+    background: #495057;
+    color: #fff;
+}
+
+.custom-sidebar .icon {
+    font-size: 1.2rem;
+}
+
+.custom-sidebar.collapsed .text {
+    display: none;
+}
+
+/* Toggle Button */
+.custom-sidebar-toggler {
+    background: #343a40;
+    color: #fff;
+    border: none;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-right: 15px;
+}
+
+.custom-sidebar-toggler:hover {
+    background: #495057;
+}
+
+/* Content */
+.custom-content {
+    margin-left: 250px;
+    transition: margin-left 0.3s ease;
+}
+
+.custom-content.collapsed {
+    margin-left: 70px;
+}
+
+/* Header */
+.custom-header {
+    background: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+}
+
+.custom-header .account-icon {
+    font-size: 1.5rem;
+    color: #343a40;
+    margin-left: auto;
+    text-decoration: none;
+}
+
+@media (max-width: 992px) {
+    .custom-sidebar {
+        left: -250px;
+    }
+
+    .custom-sidebar.open {
+        left: 0;
+    }
+
+    .custom-content {
+        margin-left: 0 !important;
+    }
+}
+
+/* Hide the sidebar on mobile devices */
+@media (max-width: 767px) {
+    ul#accordionSidebar {
+        display: none;
+    }
+}
+
+
+
+/* Style the off-canvas menu to be 70% width only on mobile */
+@media (max-width: 767px) {
+    div#offcanvasWithBothOptions {
+        width: 70% !important; /* Set off-canvas width to 70% */
+    }
+
+    /* Ensure the off-canvas menu only shows on mobile */
+    div#offcanvasWithBothOptions {
+        display: block;
+    }
+
+    .navbar-custom-position {
+        justify-content: space-between !important; /* Override for mobile */
+    }
+}
+
+/* Hide the off-canvas menu on larger screens */
+@media (min-width: 768px) {
+    div#offcanvasWithBothOptions {
+        display: none; /* Prevent it from showing on larger screens */
+    }
+ 
+
+
+.navbar-custom-position {
+    justify-content: flex-end !important; /* Default for larger screens */
+}
+
+}
+.sidebar .nav-item.active .nav-link {
+    font-weight: 700;
+}
+
+:root :where(.wp-block-navigation .current-menu-item) {
+    color: #0d0e0e;
+}
