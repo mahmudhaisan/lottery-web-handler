@@ -6,8 +6,10 @@ if (!class_exists('WP_List_Table')) {
     require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
 }
 
-class Withdrawal_Requests_List_Table extends WP_List_Table {
-    public function __construct() {
+class Withdrawal_Requests_List_Table extends WP_List_Table
+{
+    public function __construct()
+    {
         parent::__construct([
             'singular' => 'withdrawal_request',
             'plural'   => 'withdrawal_requests',
@@ -16,29 +18,36 @@ class Withdrawal_Requests_List_Table extends WP_List_Table {
     }
 
     // Define columns
-    public function get_columns() {
+    public function get_columns()
+    {
         return [
             'cb'             => '<input type="checkbox" />', // Checkbox for bulk actions
             'user_id'        => 'User Name',
             'amount'         => 'Amount',
+            'amount'         => 'Amount',
+            'method'         => 'method',
             'status'         => 'Status',
-            'request_time'   => 'Request Time',
+            'withdraw_number'   => 'withdraw_number',
             'completed_time' => 'Completed Time',
         ];
     }
 
     // Define sortable columns
-    public function get_sortable_columns() {
+    public function get_sortable_columns()
+    {
         return [
             'user_id'      => ['user_id', true],
             'amount'       => ['amount', false],
             'status'       => ['status', false],
             'request_time' => ['request_time', false],
+            'method' => ['method', false],
+            'withdraw_number' => ['method', false],
         ];
     }
 
     // Add checkbox column
-    public function column_cb($item) {
+    public function column_cb($item)
+    {
         return sprintf(
             '<input type="checkbox" name="request_id[]" value="%s" />',
             esc_attr($item->id)
@@ -46,7 +55,8 @@ class Withdrawal_Requests_List_Table extends WP_List_Table {
     }
 
     // Display data for columns
-    public function column_default($item, $column_name) {
+    public function column_default($item, $column_name)
+    {
         switch ($column_name) {
             case 'user_id':
                 // Fetch username from user ID
@@ -65,13 +75,18 @@ class Withdrawal_Requests_List_Table extends WP_List_Table {
                 return esc_html($item->request_time);
             case 'completed_time':
                 return $item->status === 'completed' ? esc_html($item->completed_time) : 'N/A';
+            case 'method':
+                return esc_html($item->method);
+            case 'withdraw_number':
+                return esc_html($item->method);
             default:
                 return ''; // For undefined columns
         }
     }
 
     // Prepare items, search, and pagination
-    public function prepare_items() {
+    public function prepare_items()
+    {
         global $wpdb;
         $table_name = $wpdb->prefix . 'withdrawal_requests';
 
@@ -104,13 +119,15 @@ class Withdrawal_Requests_List_Table extends WP_List_Table {
     }
 
     // Add bulk actions
-    public function get_bulk_actions() {
+    public function get_bulk_actions()
+    {
         return [
             'delete' => 'Delete',
         ];
     }
 
-    public function process_bulk_action() {
+    public function process_bulk_action()
+    {
         if ('delete' === $this->current_action()) {
             global $wpdb;
             $table_name = $wpdb->prefix . 'withdrawal_requests';
@@ -126,7 +143,8 @@ class Withdrawal_Requests_List_Table extends WP_List_Table {
 
 
 // Render admin page
-function render_withdrawal_admin_page() {
+function render_withdrawal_admin_page()
+{
     $withdrawal_table = new Withdrawal_Requests_List_Table();
 
     // Process bulk actions
@@ -134,7 +152,7 @@ function render_withdrawal_admin_page() {
 
     // Prepare table items
     $withdrawal_table->prepare_items();
-    ?>
+?>
     <div class="wrap">
         <h1 class="wp-heading-inline">Withdrawal Requests</h1>
 
@@ -151,7 +169,5 @@ function render_withdrawal_admin_page() {
             ?>
         </form>
     </div>
-    <?php
+<?php
 }
-
-

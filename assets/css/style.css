@@ -144,3 +144,28 @@ body {
 :root :where(.wp-block-navigation .current-menu-item) {
     color: #0d0e0e;
 }
+
+
+/* Remove underline from links */
+.nav-link {
+    text-decoration: none !important;
+}
+
+/* Add a custom background when the item is active */
+.nav-link.active {
+    background-color: #007bff;  /* Replace with your desired background color */
+    color: white !important;     /* Ensure the text is white for contrast */
+}
+
+.sidebar-dark .nav-item.active .nav-link
+{
+    background-color: #007bff;  /* Replace with your desired background color */
+    color: white !important;     /* Ensure the text is white for contrast */
+}
+
+/* Optional: Add a transition effect to make it smoother */
+.nav-link {
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+

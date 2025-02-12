@@ -85,406 +85,109 @@ register_activation_hook(__FILE__, 'create_withdrawal_requests_table');
 
 
 
-
-
-// register_deactivation_hook(__FILE__, 'clear_lottery_events_on_deactivation');
-
-// Ensure some users exist for testing the lottery system
-function ensure_lottery_users()
-{
-    $users_to_create = [
-        ['user_login' => 'user1', 'email' => 'user1@example.com'],
-        ['user_login' => 'user2', 'email' => 'user2@example.com'],
-        ['user_login' => 'user3', 'email' => 'user3@example.com'],
+// Add custom cron intervals dynamically
+function add_dynamic_cron_intervals($schedules) {
+    $times = [
+        get_option('lottery_time_1', 5),
+        get_option('lottery_time_2', 10),
+        get_option('lottery_time_3', 15)
     ];
-
-    foreach ($users_to_create as $user_data) {
-        if (!username_exists($user_data['user_login']) && !email_exists($user_data['email'])) {
-            wp_create_user($user_data['user_login'], 'password123', $user_data['email']);
-        }
+    foreach ($times as $time) {
+        $schedules['lottery_every_' . $time . '_minutes'] = [
+            'interval' => $time * 60,
+            'display'  => __('Every ' . $time . ' Minutes')
+        ];
     }
-}
-// add_action('init', 'ensure_lottery_users');
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/**
- * Lottery System: Dynamic Winner Selection Based on User-Selected Time Intervals
- */
-
-
-
-
-
-// Handle form submission to store the selected time and current timestamp in user meta
-function handle_time_selection()
-{
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['selected_time'])) {
-        $current_user_id = get_current_user_id();
-        $selected_time = sanitize_text_field($_POST['selected_time']);
-
-        // Save user-selected time and timestamp
-        update_user_meta($current_user_id, 'selected_time', $selected_time);
-        update_user_meta($current_user_id, 'selected_time_updated_at', current_time('timestamp'));
-
-        // Redirect to avoid resubmission
-        wp_redirect(add_query_arg());
-        exit;
-    }
-}
-add_action('init', 'handle_time_selection');
-
-
-
-
-
-
-
-// Add custom intervals for scheduling
-function add_custom_cron_intervals($schedules)
-{
-    $schedules['lottery_every_5_minutes'] = [
-        'interval' => 5 * 60, // 5 minutes
-        'display'  => __('Every 5 Minutes'),
-    ];
-    $schedules['lottery_every_10_minutes'] = [
-        'interval' => 10 * 60, // 10 minutes
-        'display'  => __('Every 10 Minutes'),
-    ];
-    $schedules['lottery_every_15_minutes'] = [
-        'interval' => 15 * 60, // 15 minutes
-        'display'  => __('Every 15 Minutes'),
-    ];
     return $schedules;
 }
-add_filter('cron_schedules', 'add_custom_cron_intervals');
+add_filter('cron_schedules', 'add_dynamic_cron_intervals');
 
-// Unified function to schedule events
-function schedule_lottery_events()
-{
-    $events = [
-        'run_lottery_every_5_minutes'  => 'lottery_every_5_minutes',
-        'run_lottery_every_10_minutes' => 'lottery_every_10_minutes',
-        'run_lottery_every_15_minutes' => 'lottery_every_15_minutes',
+// Schedule events dynamically
+function schedule_dynamic_lottery_events() {
+    $times = [
+        get_option('lottery_time_1', 5),
+        get_option('lottery_time_2', 10),
+        get_option('lottery_time_3', 15)
     ];
-
-    foreach ($events as $hook => $interval) {
-        // Schedule only if no event is already scheduled for the given hook
+    foreach ($times as $time) {
+        $hook = 'run_lottery_every_' . $time . '_minutes';
         if (!wp_next_scheduled($hook)) {
-            wp_schedule_event(time(), $interval, $hook);
+            wp_schedule_event(time(), 'lottery_every_' . $time . '_minutes', $hook);
         }
     }
 }
-add_action('wp', 'schedule_lottery_events');
+add_action('wp', 'schedule_dynamic_lottery_events');
 
-// Process lottery event for a specific group with execution time tracking
-function process_lottery_event($time_key)
-{
+// Process lottery event dynamically
+function process_dynamic_lottery_event($time, $points) {
     global $wpdb;
+    $grouped_users = get_users_grouped_by_selected_time();
 
-    // Option key to store the last processed time for this group
-    $option_key = "lottery_last_processed_group_{$time_key}";
-
-    // Get the last processed time
-    $last_processed = get_option($option_key);
-
-    // Calculate the next valid processing time
-    $interval_in_seconds = $time_key * 60; // Convert group time to seconds
-    $next_valid_time = $last_processed ? $last_processed + $interval_in_seconds : 0;
-
-    // Check if enough time has passed
-    if (!$last_processed || time() >= $next_valid_time) {
+    print_r($grouped_users);
 
 
-        $grouped_users = get_users_grouped_by_selected_time();
-
-        if (isset($grouped_users[$time_key]) && !empty($grouped_users[$time_key])) {
-            $users = $grouped_users[$time_key];
-            $random_user_id = $users[array_rand($users)];
-
-            // Update user points
-            $current_points = get_user_meta($random_user_id, 'total_user_points', true);
-            $new_points = $current_points ? $current_points + 10 : 10;
-            update_user_meta($random_user_id, 'total_user_points', $new_points);
-
-            // Log the winner
-            $user = get_userdata($random_user_id);
-            error_log("Winner (Group {$time_key} Minutes): {$user->user_login}, New Points: {$new_points}");
-
-            // Save lottery data to the custom table
-            global $wpdb;
-            $table_name = $wpdb->prefix . 'lottery_data';
-            $wpdb->insert($table_name, [
-                'issued_time'   => current_time('mysql'),
-                'winner_id'     => $random_user_id,
-                'points_awarded' => 10,
-                'group_time'    => $time_key,
-            ]);
-
-
-  
-        } else {
-            error_log("No users found for group: {$time_key} minutes.");
-        }
-
-
-        update_option($option_key, time());
-
-        // Log for debugging
-        error_log("Lottery processed for group {$time_key} at " . current_time('mysql'));
-
-
-    } else {
-        // Log that the event is skipped
-        error_log("Lottery skipped for group {$time_key} at " . current_time('mysql') . " (Next run time: " . date('Y-m-d H:i:s', $next_valid_time) . ")");
+    if (isset($grouped_users[$time]) && !empty($grouped_users[$time])) {
+        $random_user_id = $grouped_users[$time][array_rand($grouped_users[$time])];
+        $current_points = get_user_meta($random_user_id, 'total_user_points', true);
+        update_user_meta($random_user_id, 'total_user_points', $current_points + $points);
+        
+        $wpdb->insert($wpdb->prefix . 'lottery_data', [
+            'issued_time'   => current_time('mysql'),
+            'winner_id'     => $random_user_id,
+            'points_awarded' => $points,
+            'group_time'    => $time,
+        ]);
     }
 }
 
-// Hook for each lottery event
-add_action('run_lottery_every_5_minutes', function () {
-    process_lottery_event(5);
-});
-add_action('run_lottery_every_10_minutes', function () {
-    process_lottery_event(10);
-});
-add_action('run_lottery_every_15_minutes', function () {
-    process_lottery_event(15);
-});
+// Hook events dynamically
+function hook_dynamic_lottery_events() {
+    $times = [
+        get_option('lottery_time_1', 5) => get_option('lottery_points_1', 10),
+        get_option('lottery_time_2', 10) => get_option('lottery_points_2', 20),
+        get_option('lottery_time_3', 15) => get_option('lottery_points_3', 30)
+    ];
+    foreach ($times as $time => $points) {
+        add_action('run_lottery_every_' . $time . '_minutes', function () use ($time, $points) {
+            process_dynamic_lottery_event($time, $points);
+        });
+    }
+}
+hook_dynamic_lottery_events();
+
+
+
+// Clear scheduled events on settings update
+function clear_and_reschedule_lottery_events() {
+    schedule_dynamic_lottery_events();
+}
+add_action('update_option_lottery_time_1', 'clear_and_reschedule_lottery_events');
+add_action('update_option_lottery_time_2', 'clear_and_reschedule_lottery_events');
+add_action('update_option_lottery_time_3', 'clear_and_reschedule_lottery_events');
+add_action('update_option_lottery_points_1', 'clear_and_reschedule_lottery_events');
+add_action('update_option_lottery_points_2', 'clear_and_reschedule_lottery_events');
+add_action('update_option_lottery_points_3', 'clear_and_reschedule_lottery_events');
 
 // Clear scheduled events on plugin deactivation
-function clear_lottery_cron_events_on_deactivation()
-{
-    $events = [
-        'run_lottery_every_5_minutes',
-        'run_lottery_every_10_minutes',
-        'run_lottery_every_15_minutes',
-    ];
-
-    foreach ($events as $hook) {
-        wp_clear_scheduled_hook($hook);
-    }
-
-    // Remove options storing last processed times
-    delete_option('lottery_last_processed_group_5');
-    delete_option('lottery_last_processed_group_10');
-    delete_option('lottery_last_processed_group_15');
-}
 register_deactivation_hook(__FILE__, 'clear_lottery_cron_events_on_deactivation');
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// // Add custom intervals for scheduling
-// function add_custom_cron_intervals($schedules)
-// {
-//     $schedules['lottery_every_5_minutes'] = [
-//         'interval' => 1 * 60,
-//         'display'  => __('Every 1 Minutes'),
-//     ];
-//     $schedules['lottery_every_10_minutes'] = [
-//         'interval' => 2 * 60,
-//         'display'  => __('Every 2 Minutes'),
-//     ];
-//     $schedules['lottery_every_15_minutes'] = [
-//         'interval' => 3 * 60,
-//         'display'  => __('Every 3 Minutes'),
-//     ];
-//     return $schedules;
-// }
-// add_filter('cron_schedules', 'add_custom_cron_intervals');
-
-
-
-
-
-
-// // Schedule the events if not already scheduled
-// function schedule_individual_events()
-// {
-//     // Print the next scheduled time for the 5-minute lottery event
-//     $next_5_minute_time = wp_next_scheduled('run_lottery_every_5_minutes');
-//     if ($next_5_minute_time) {
-//         echo 'Next scheduled time for 5-minute lottery: ' . date('Y-m-d H:i:s', $next_5_minute_time) . "<br>";
-//     } else {
-//         echo 'The 5-minute lottery event is not scheduled.' . "<br>";
-
-//         // Schedule the 5-minute lottery event
-//         wp_schedule_event(time(), 'lottery_every_5_minutes', 'run_lottery_every_5_minutes');
-//     }
-
-//     // Print the next scheduled time for the 10-minute lottery event
-//     $next_10_minute_time = wp_next_scheduled('run_lottery_every_10_minutes');
-//     if ($next_10_minute_time) {
-//         echo 'Next scheduled time for 10-minute lottery: ' . date('Y-m-d H:i:s', $next_10_minute_time) . "<br>";
-//     } else {
-//         echo 'The 10-minute lottery event is not scheduled.' . "<br>";
-
-//         // Schedule the 10-minute lottery event
-//         wp_schedule_event(time(), 'lottery_every_10_minutes', 'run_lottery_every_10_minutes');
-//     }
-
-//     // Print the next scheduled time for the 15-minute lottery event
-//     $next_15_minute_time = wp_next_scheduled('run_lottery_every_15_minutes');
-//     if ($next_15_minute_time) {
-//         echo 'Next scheduled time for 15-minute lottery: ' . date('Y-m-d H:i:s', $next_15_minute_time) . "<br>";
-//     } else {
-//         echo 'The 15-minute lottery event is not scheduled.' . "<br>";
-
-//         // Schedule the 15-minute lottery event
-//         wp_schedule_event(time(), 'lottery_every_15_minutes', 'run_lottery_every_15_minutes');
-//     }
-// }
-// add_action('wp', 'schedule_individual_events');
-
-
-
-// // Add dummy actions for each event
-// add_action('run_lottery_every_5_minutes', function () {
-//     error_log('5-minute lottery triggered at ' . date('Y-m-d H:i:s'));
-// });
-// add_action('run_lottery_every_10_minutes', function () {
-//     error_log('10-minute lottery triggered at ' . date('Y-m-d H:i:s'));
-// });
-// add_action('run_lottery_every_15_minutes', function () {
-//     error_log('15-minute lottery triggered at ' . date('Y-m-d H:i:s'));
-// });
-
-
-
-
-// // Process lottery event for a specific group
-// function process_lottery_event($time_key)
-// {
-
-
-//     global $wpdb;
-//     $table_name = $wpdb->prefix . 'lottery_data';
-//     $wpdb->insert($table_name, [
-//         'issued_time'   => current_time('mysql'),
-//         'winner_id'     => 1,
-//         'points_awarded' => 10,
-//         'group_time'    => $time_key,
-//     ]);
-
-
-//     // $grouped_users = get_users_grouped_by_selected_time();
-
-//     // if (isset($grouped_users[$time_key]) && !empty($grouped_users[$time_key])) {
-//     //     $users = $grouped_users[$time_key];
-//     //     $random_user_id = $users[array_rand($users)];
-
-//     //     // Update user points
-//     //     $current_points = get_user_meta($random_user_id, 'total_user_points', true);
-//     //     $new_points = $current_points ? $current_points + 10 : 10;
-//     //     update_user_meta($random_user_id, 'total_user_points', $new_points);
-
-//     //     // Log the winner
-//     //     $user = get_userdata($random_user_id);
-//     //     error_log("Winner (Group {$time_key} Minutes): {$user->user_login}, New Points: {$new_points}");
-
-//     //     // Save lottery data to the custom table
-//     //     global $wpdb;
-//     //     $table_name = $wpdb->prefix . 'lottery_data';
-//     //     $wpdb->insert($table_name, [
-//     //         'issued_time'   => current_time('mysql'),
-//     //         'winner_id'     => $random_user_id,
-//     //         'points_awarded' => 10,
-//     //         'group_time'    => $time_key,
-//     //     ]);
-//     // } else {
-//     //     error_log("No users found for group: {$time_key} minutes.");
-//     // }
-// }
-
-// // Hook for 5-minute event
-// add_action('run_lottery_every_5_minutes', 'process_5_minute_lottery_event');
-// function process_5_minute_lottery_event()
-// {
-//     process_lottery_event(5);
-// }
-
-// // Hook for 10-minute event
-// add_action('run_lottery_every_10_minutes', 'process_10_minute_lottery_event');
-// function process_10_minute_lottery_event()
-// {
-//     process_lottery_event(10);
-// }
-
-// // Hook for 15-minute event
-// add_action('run_lottery_every_15_minutes', 'process_15_minute_lottery_event');
-// function process_15_minute_lottery_event()
-// {
-//     process_lottery_event(15);
-// }
-
-// // Clear scheduled events on plugin deactivation
-// function clear_custom_cron_events_on_deactivation()
-// {
-//     wp_clear_scheduled_hook('run_lottery_every_5_minutes');
-//     wp_clear_scheduled_hook('run_lottery_every_10_minutes');
-//     wp_clear_scheduled_hook('run_lottery_every_15_minutes');
-// }
-// register_deactivation_hook(__FILE__, 'clear_custom_cron_events_on_deactivation');
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-function remove_all_other_cron_jobs()
-{
+function remove_all_other_cron_jobs() {
     // Get all scheduled cron events
     $cron_events = _get_cron_array();
 
-    // Define your custom cron hooks
+    // Get lottery times from options
+    $lottery_time_1 = get_option('lottery_time_1', 5); // Default to 5 if not set
+    $lottery_time_2 = get_option('lottery_time_2', 10); // Default to 10 if not set
+    $lottery_time_3 = get_option('lottery_time_3', 15); // Default to 15 if not set
+
+    // Define dynamic cron hooks based on the lottery times
     $my_cron_hooks = [
-        'run_lottery_every_5_minutes',
-        'run_lottery_every_10_minutes',
-        'run_lottery_every_15_minutes',
+        'run_lottery_every_' . $lottery_time_1 . '_minutes',
+        'run_lottery_every_' . $lottery_time_2 . '_minutes',
+        'run_lottery_every_' . $lottery_time_3 . '_minutes',
     ];
 
     if ($cron_events) {
@@ -499,206 +202,6 @@ function remove_all_other_cron_jobs()
     }
 }
 add_action('init', 'remove_all_other_cron_jobs');
-
-
-
-// // Dynamically schedule events for each group
-// function schedule_lottery_events_by_group()
-// {
-//     $grouped_users = get_users_grouped_by_selected_time();
-
-//     foreach ($grouped_users as $time_key => $users) {
-//         if (!empty($users)) {
-//             $hook_name = "run_lottery_event_{$time_key}";
-//             $interval_name = "every_{$time_key}_minutes";
-
-//             // Schedule the event if not already scheduled
-//             if (!wp_next_scheduled($hook_name)) {
-//                 wp_schedule_event(time(), $interval_name, $hook_name);
-//             }
-//         }
-//     }
-// }
-// add_action('wp', 'schedule_lottery_events_by_group');
-
-// // Process lottery event for a specific group
-// function process_lottery_event($time_key)
-// {
-//     $grouped_users = get_users_grouped_by_selected_time();
-
-//     if (isset($grouped_users[$time_key]) && !empty($grouped_users[$time_key])) {
-//         $users = $grouped_users[$time_key];
-//         $random_user_id = $users[array_rand($users)];
-
-//         // Update user points
-//         $current_points = get_user_meta($random_user_id, 'total_user_points', true);
-//         $new_points = $current_points ? $current_points + 10 : 10;
-//         update_user_meta($random_user_id, 'total_user_points', $new_points);
-
-//         // Log the winner
-//         $user = get_userdata($random_user_id);
-//         error_log("Winner (Group {$time_key} Minutes): {$user->user_login}, New Points: {$new_points}");
-
-//         // Save lottery data to the custom table
-//         global $wpdb;
-//         $table_name = $wpdb->prefix . 'lottery_data';
-//         $wpdb->insert($table_name, [
-//             'issued_time'   => current_time('mysql'),
-//             'winner_id'     => $random_user_id,
-//             'points_awarded' => 10,
-//             'group_time'    => $time_key,
-//         ]);
-//     } else {
-//         error_log("No users found for group: {$time_key} minutes.");
-//     }
-// }
-
-
-
-// // Clear all scheduled events on plugin deactivation
-// function clear_lottery_events_on_deactivation()
-// {
-//     $grouped_users = get_users_grouped_by_selected_time();
-
-//     foreach ($grouped_users as $time_key => $users) {
-//         $hook_name = "run_lottery_event_{$time_key}";
-//         wp_clear_scheduled_hook($hook_name);
-//     }
-// }
-// register_deactivation_hook(__FILE__, 'clear_lottery_events_on_deactivation');
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1076,6 +579,7 @@ add_action('admin_notices', 'display_user_denial_notice');
 
 
 include_once LDH_PLUGINS_PATH . '/includes/admin/admin.php';
+include_once LDH_PLUGINS_PATH . '/includes/admin/depositClass.php';
 include_once LDH_PLUGINS_PATH . '/includes/frontend/frontend.php';
 include_once LDH_PLUGINS_PATH . '/includes/withdrawal.php';
 include_once LDH_PLUGINS_PATH . '/includes/functions.php';

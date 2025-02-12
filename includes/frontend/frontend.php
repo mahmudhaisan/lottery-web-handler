@@ -106,7 +106,8 @@ function ldhp_custom_enqueue_assets()
 
 
 
-function render_sidebar() {
+function render_sidebar()
+{
     $current_user_id = get_current_user_id();
     $selected_time = get_user_meta($current_user_id, 'selected_time', true);
 
@@ -119,8 +120,11 @@ function render_sidebar() {
     $lottery_time_2 = get_option('lottery_time_2', 10);
     $lottery_time_3 = get_option('lottery_time_3', 15);
 
+    $current_page = isset($_GET['lottery-page']) ? $_GET['lottery-page'] : 'dashboard'; // Get the current lottery page
+
+
     ob_start();
-    ?>
+?>
     <!-- Sidebar -->
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
         <div class="text-center d-none d-md-inline">
@@ -133,19 +137,21 @@ function render_sidebar() {
             <div class="sidebar-brand-text mx-3">লটারি</div>
         </a>
         <hr class="sidebar-divider my-0">
-        <li class="nav-item active">
+        <li class="nav-item <?php echo ($current_page === 'dashboard') ? 'active' : ''; ?>">
             <a class="nav-link" href="<?php echo esc_url(add_query_arg('lottery-page', 'dashboard', get_permalink())); ?>">
                 <i class="fas fa-fw fa-tachometer-alt"></i>
                 <span>ড্যাশবোর্ড</span>
             </a>
         </li>
-        <li class="nav-item">
+
+        <li class="nav-item <?php echo ($current_page === 'results') ? 'active' : ''; ?>">
             <a class="nav-link" href="<?php echo esc_url(add_query_arg('lottery-page', 'results', get_permalink())); ?>">
                 <i class="fas fa-fw fa-trophy"></i>
                 <span>লটারি ফলাফল</span>
             </a>
         </li>
-        <li class="nav-item">
+
+        <li class="nav-item <?php echo ($current_page === 'deposit') ? 'active' : ''; ?>">
             <a class="nav-link" href="<?php echo esc_url(add_query_arg('lottery-page', 'deposit', get_permalink())); ?>">
                 <i class="fas fa-fw fa-dollar-sign"></i>
                 <span>ডিপোজিট</span>
@@ -208,11 +214,48 @@ function render_sidebar() {
             </li>
         <?php endif; ?>
     </ul>
-    <?php
+<?php
     return ob_get_clean();
 }
 
 
+
+// Get predefined lottery times from options
+$lottery_time_1 = get_option('lottery_time_1', 5);
+$lottery_time_2 = get_option('lottery_time_2', 10);
+$lottery_time_3 = get_option('lottery_time_3', 15);
+
+// Handle form submission to store the selected time and current timestamp in user meta
+function handle_time_selection()
+{
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['selected_time'])) {
+        $current_user_id = get_current_user_id();
+        $selected_time = sanitize_text_field($_POST['selected_time']);
+
+        // Check which lottery time matches the selected time
+        $lottery_time_key = '';
+
+        if ($selected_time == get_option('lottery_time_1', 5)) {
+            $lottery_time_key = 'lottery_time_1';
+        } elseif ($selected_time == get_option('lottery_time_2', 10)) {
+            $lottery_time_key = 'lottery_time_2';
+        } elseif ($selected_time == get_option('lottery_time_3', 15)) {
+            $lottery_time_key = 'lottery_time_3';
+        }
+
+        // Save the selected time and its corresponding lottery time key
+        if ($lottery_time_key) {
+            update_user_meta($current_user_id, 'selected_time', $selected_time);
+            update_user_meta($current_user_id, 'selected_time_key', $lottery_time_key);
+            update_user_meta($current_user_id, 'selected_time_updated_at', current_time('timestamp'));
+        }
+
+        // Redirect to avoid resubmission
+        wp_redirect(add_query_arg());
+        exit;
+    }
+}
+add_action('init', 'handle_time_selection');
 
 
 
@@ -338,6 +381,12 @@ function render_offcanvas_menu()
     $current_user_id = get_current_user_id();
     $selected_time = get_user_meta($current_user_id, 'selected_time', true);
 
+    // Get current lottery times from the options
+    $lottery_time_1 = get_option('lottery_time_1', 5);
+    $lottery_time_2 = get_option('lottery_time_2', 10);
+    $lottery_time_3 = get_option('lottery_time_3', 15);
+    $current_page = isset($_GET['lottery-page']) ? $_GET['lottery-page'] : 'dashboard'; // Get the current lottery page
+
 
     ob_start(); // Start output buffering
 ?>
@@ -358,7 +407,7 @@ function render_offcanvas_menu()
 
                 <!-- Dashboard Item -->
                 <li class="nav-item mb-2">
-                    <a class="nav-link d-flex align-items-center text-dark py-2 px-3 rounded hover-highlight" href="<?php echo esc_url(add_query_arg('lottery-page', 'dashboard', get_permalink())); ?>">
+                    <a class="nav-link d-flex align-items-center text-dark py-2 px-3 rounded hover-highlight <?php echo ($current_page === 'dashboard') ? 'active bg-primary' : ''; ?>" href="<?php echo esc_url(add_query_arg('lottery-page', 'dashboard', get_permalink())); ?>">
                         <i class="fas fa-tachometer-alt me-2"></i>
                         <span class="fw-bold">ড্যাশবোর্ড</span>
                     </a>
@@ -366,16 +415,17 @@ function render_offcanvas_menu()
 
                 <!-- Lottery Results Item -->
                 <li class="nav-item mb-2">
-                    <a class="nav-link d-flex align-items-center text-dark py-2 px-3 rounded hover-highlight" href="<?php echo esc_url(add_query_arg('lottery-page', 'results', get_permalink())); ?>">
+                    <a class="nav-link d-flex align-items-center text-dark py-2 px-3 rounded hover-highlight <?php echo ($current_page === 'results') ? 'active bg-primary' : ''; ?>" href="<?php echo esc_url(add_query_arg('lottery-page', 'results', get_permalink())); ?>">
                         <i class="fas fa-trophy me-2"></i>
                         <span class="fw-bold">লটারি ফলাফল</span>
                     </a>
                 </li>
 
-                <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center text-dark py-2 px-3 rounded hover-highlight" href="<?php echo esc_url(add_query_arg('lottery-page', 'deposit', get_permalink())); ?>">
-                        <i class="fas fa-fw fa-dollar-sign"></i>
-                        <span>ডিপোজিট</span>
+                <!-- Deposit Item -->
+                <li class="nav-item mb-2">
+                    <a class="nav-link d-flex align-items-center text-dark py-2 px-3 rounded hover-highlight <?php echo ($current_page === 'deposit') ? 'active bg-primary' : ''; ?>" href="<?php echo esc_url(add_query_arg('lottery-page', 'deposit', get_permalink())); ?>">
+                        <i class="fas fa-fw fa-dollar-sign me-2"></i>
+                        <span class="fw-bold">ডিপোজিট</span>
                     </a>
                 </li>
 
@@ -391,9 +441,9 @@ function render_offcanvas_menu()
                                 <form method="post" action="">
                                     <label for="select-time" class="text-white">লটারির ধরন:</label>
                                     <select id="select-time" name="selected_time" class="form-control mb-2">
-                                        <option value="5">প্রতি 5 মিনিট</option>
-                                        <option value="10">প্রতি 10 মিনিট</option>
-                                        <option value="15">প্রতি 15 মিনিট</option>
+                                        <option value="<?php echo esc_attr($lottery_time_1); ?>" <?php selected($selected_time, $lottery_time_1); ?>><?php echo esc_html($lottery_time_1); ?> মিনিট</option>
+                                        <option value="<?php echo esc_attr($lottery_time_2); ?>" <?php selected($selected_time, $lottery_time_2); ?>><?php echo esc_html($lottery_time_2); ?> মিনিট</option>
+                                        <option value="<?php echo esc_attr($lottery_time_3); ?>" <?php selected($selected_time, $lottery_time_3); ?>><?php echo esc_html($lottery_time_3); ?> মিনিট</option>
                                     </select>
                                     <button type="submit" class="btn btn-success btn-block">সাবমিট</button>
                                 </form>
@@ -1142,25 +1192,8 @@ function render_deposit_content()
                 <h6 class="m-0 font-weight-bold text-primary">ডিপোজিট রিকুয়েস্ট</h6>
             </div>
             <div class="card-body">
-                <h5 class="mb-4">বিকাশ এবং নগদ নির্দেশনা</h5>
 
-                <!-- Instructions with Bootstrap styling -->
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="alert alert-info">
-                            <h6 class="font-weight-bold">বিকাশ নাম্বার</h6>
-                            <p>017XXXXXXXX</p>
-                            <p><em>অনুগ্রহ করে এই নাম্বারে টাকা পাঠান।</em></p>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="alert alert-info">
-                            <h6 class="font-weight-bold">নগদ নাম্বার</h6>
-                            <p>018XXXXXXXX</p>
-                            <p><em>অনুগ্রহ করে এই নাম্বারে টাকা পাঠান।</em></p>
-                        </div>
-                    </div>
-                </div>
+                <?php echo display_payment_instructions(); ?>
 
                 <!-- Deposit Form -->
                 <form method="POST" action="" enctype="multipart/form-data">
